@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "amr_control"
+package_name = "amr_planning"
 
 setup(
     name=package_name,
@@ -14,13 +14,12 @@ setup(
     zip_safe=True,
     maintainer="Jaime Boal",
     maintainer_email="jboal@comillas.edu",
-    description="Control stack for Autonomous Mobile Robots @ Comillas ICAI.",
+    description="Planning stack for Autonomous Mobile Robots @ Comillas ICAI.",
     license="Apache License 2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "pure_pursuit = amr_control.pure_pursuit_node:main",
-            "wall_follower = amr_control.wall_follower_node:main",
+            "a_star = amr_planning.a_star_node:main",
         ],
     },
 )

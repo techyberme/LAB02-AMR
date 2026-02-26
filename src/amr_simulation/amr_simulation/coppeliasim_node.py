@@ -230,11 +230,7 @@ class CoppeliaSimNode(LifecycleNode):
 
         # Twist únicamente (lo que pide la práctica)
         odom_msg.twist.twist.linear.x = float(z_v)
-        odom_msg.twist.twist.linear.y = 0.0
-        odom_msg.twist.twist.linear.z = 0.0
 
-        odom_msg.twist.twist.angular.x = 0.0
-        odom_msg.twist.twist.angular.y = 0.0
         odom_msg.twist.twist.angular.z = float(z_w)
 
         self._odom_pub.publish(odom_msg)
@@ -255,9 +251,9 @@ class CoppeliaSimNode(LifecycleNode):
         us_scan_pub_msg.header.stamp = self.get_clock().now().to_msg()
         us_scan_pub_msg.radiation_type = us_scan_pub_msg.ULTRASOUND
         us_scan_pub_msg.ranges = z_us
-        us_scan_pub_msg.field_of_view = math.pi / 2
+        us_scan_pub_msg.field_of_view = math.pi / 4
         us_scan_pub_msg.max_range = 1.0
-        us_scan_pub_msg.min_range = 0.0
+        us_scan_pub_msg.min_range = 0.05
 
         self._us_scan_pub.publish(us_scan_pub_msg)
 

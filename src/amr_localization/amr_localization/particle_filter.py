@@ -70,14 +70,19 @@ class ParticleFilter:
         # TODO: 2.10. Complete the missing function body with your code.
         localized: bool = False
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
-        coordinates = self._particles[:, :2]
+        x_y = self._particles[:, :2].astype(np.float64) 
+        theta = self._particles[:, 2].astype(np.float64)
+        coordinates = np.column_stack((x_y, np.sin(theta), np.cos(theta)))
         #min_samples, 10. Eps is the distance between two samples.
-        clustering = DBSCAN(eps=0.5, min_samples=10).fit(coordinates)
+        clustering = DBSCAN(eps=0.8, min_samples=10).fit(coordinates)
         labels = clustering.labels_
-        n_clusters=len(set(labels)) - (1 if -1 in labels else 0)
+        unique_labels = [l for l in set(labels) if l != -1] #
+        n_clusters = len(unique_labels)
         #Particle count adaptation
         if n_clusters > 1:
-            self._particle_count = max(500,self._particle_count - 500/n_clusters )
+            self._particle_count = max(600,self._particle_count - 1000//n_clusters )
+            print(n_clusters, flush=True)
+            print(self._particle_count, flush=True)
         elif n_clusters == 1:
             self._particle_count= 100
             localized = True
@@ -110,12 +115,12 @@ class ParticleFilter:
             x_prev=x
             y_prev=y
             v_noise= v + np.random.normal(0, self._sigma_v)
-            w_noise= w + np.random.normal(0, self._sigma_v)
+            w_noise= w + np.random.normal(0, self._sigma_w)
             x += v_noise * math.cos(theta) * self._dt 
             y += v_noise * math.sin(theta) * self._dt 
             theta += w_noise * self._dt 
             theta = theta % (2 * math.pi)
-            res = self._map.check_collision([(x_prev, y_prev),(x, y)],True)
+            res = self._map.check_collision([(x_prev, y_prev),(x, y)],False)
             if res[0]: 
                 (x_int, y_int), dist = res
                 self._particles[i]= (x_int, y_int, theta)
@@ -134,15 +139,17 @@ class ParticleFilter:
         probabilities = np.empty(len(self._particles))
         for i in range(len(self._particles)):
             probabilities[i] = self._measurement_probability(measurements, self._particles[i])
-
+        sum = np.sum(probabilities)
         # Normalize probabilities
-        if np.sum(probabilities) > 0:
-            probabilities /= np.sum(probabilities)
-        elif np.sum(probabilities) == 0:
+        if sum > 0:
+            probabilities /= sum
+        elif sum== 0:
             probabilities= np.ones(len(self._particles))/len(self._particles)
 
+        n_real = len(self._particles)
+        n_target = self._particle_count
         # Resample particles based on probabilities
-        indices = np.random.choice(len(self._particles), size=len(self._particles), p=probabilities)
+        indices = np.random.choice(n_real, n_target, p=probabilities)
         self._particles = self._particles[indices]
         
 
@@ -235,7 +242,7 @@ class ParticleFilter:
         Returns: A NumPy array of tuples (x, y, theta) [m, m, rad].
 
         """
-        particles = np.empty((particle_count, 3), dtype=object)
+        particles = np.empty((particle_count, 3), dtype=np.float64)
         x_min, y_min, x_max, y_max = self._map.bounds()
 
         self._logger.info(f"Initializing {particle_count} particles...")
@@ -289,11 +296,8 @@ class ParticleFilter:
         # TODO: 2.6. Complete the missing function body with your code.
         for ray in rays:
             res = self._map.check_collision(ray, True)
-            if res[0]: 
-                _, dist = res
-                z_hat.append(dist)
-            else:
-                z_hat.append(float("inf"))
+            _, dist = res
+            z_hat.append(dist)
         return z_hat
     
 
@@ -338,18 +342,17 @@ class ParticleFilter:
         for meas, z_h in zip(measurements, z_hat):
         # Handle out-of-range for real measurement
             if math.isinf(meas):
-                meas = 1.25 * self._sensor_range
+                meas = 0.7 * self._sensor_range
                 
             # Handle out-of-range for expected measurement
             if math.isinf(z_h):
-                z_h = 1.25 * self._sensor_range
+                z_h = 0.7 * self._sensor_range
                 
             # 3. Update probability (Product of Gaussians)
             probability *= self._gaussian(z_h, self._sigma_z, meas)
         
         return probability
-        pass
-
+ 
     def _sensor_rays(self, particle: tuple[float, float, float]) -> list[list[tuple[float, float]]]:
         """Determines the simulated sensor ray segments for a given particle.
 
@@ -378,4 +381,4 @@ class ParticleFilter:
             y_end = ys + self._sensor_range * math.sin(theta + ts)
             rays.append([(xs, ys), (x_end, y_end)])
         
-        return rays
+        return rays 
